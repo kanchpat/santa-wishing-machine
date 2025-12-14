@@ -23,7 +23,13 @@ export async function generateScript(data, apiKey) {
     Mention the behavior specifically.
     Mention the gift suggestion as something the elves are working on.
     End with a Merry Christmas.
-    Do not include scene directions like [Santa looks at camera], just the spoken text.
+
+    CRITICAL INSTRUCTIONS:
+    1. Output ONLY the spoken words. 
+    2. DO NOT include *stage directions* like (smiles), [looks at camera], or (pauses).
+    3. DO NOT include intro text like "Here is the script" or "Okay".
+    4. Start immediately with "Ho ho ho!" or "Hello".
+    5. The text you generate will be sent directly to a Text-to-Speech engine, so it must be clean spoken English only.
   `;
 
   try {
