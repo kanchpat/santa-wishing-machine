@@ -52,7 +52,7 @@ This will:
 **Access the App:** Open the URL shown in the terminal (usually `http://localhost:5173`).
 
 ### System Architecture Info-Graphic
-![Santa App Architecture](/architecture.jpg)
+![Santa App Architecture](architecture.jpg)
 
 ---
 
