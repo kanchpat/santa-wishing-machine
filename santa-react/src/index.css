@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .paper-shadow {
+    box-shadow: 
+      0 1px 1px hsl(0deg 0% 0% / 0.075),
+      0 2px 2px hsl(0deg 0% 0% / 0.075),
+      0 4px 4px hsl(0deg 0% 0% / 0.075),
+      0 8px 8px hsl(0deg 0% 0% / 0.075),
+      0 16px 16px hsl(0deg 0% 0% / 0.075);
+  }
+  .wax-seal {
+    background: #f2200d;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.3), 2px 2px 4px rgba(0,0,0,0.2);
+  }
+}
