@@ -85,4 +85,4 @@ The `start.sh` script tries to use standard ports. If they are busy, Vite will a
 *   `start.sh`: Universal launch script.
 
 ---
-*Built with Holiday Magic by Jetski ❄️*
+*Built with Holiday Magic by Stitch + Jetski ❄️*
