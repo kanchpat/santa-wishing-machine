@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+node_env/
+
+# Environment
+.env
+.DS_Store
+
+# Build Outputs
+dist/
+dist-ssr/
+*.log
+
+# Editor config
+.vscode/
+.idea/
+
+# Large files
+*.tar.gz
+*.zip
