@@ -52,28 +52,7 @@ This will:
 **Access the App:** Open the URL shown in the terminal (usually `http://localhost:5173`).
 
 ### System Architecture Info-Graphic
-```mermaid
-graph TD
-    User((User/Child)) -->|Enters Wish| FE[React Frontend]
-    
-    subgraph "Local Environment"
-        FE -->|1. Generate Script| Gemini[Gemini API]
-        FE -->|2. Request Video| BE[Node.js Backend]
-        FE -->|3. Request Audio| BE
-    end
-
-    subgraph "Google Cloud"
-        BE -->|Generate Video| Veo[Veo API]
-        BE -->|Generate Speech| TTS[Neural TTS API]
-        Veo -->|Video URL| BE
-        TTS -->|Audio B64| BE
-    end
-    
-    BE -->|Stream Video (Proxy)| FE
-    BE -->|Return Audio| FE
-    
-    FE -->|Play| VideoPlayer[Magical Experience]
-```
+![Santa App Architecture](/architecture.jpg)
 
 ---
 
