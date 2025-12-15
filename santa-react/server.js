@@ -177,7 +177,24 @@ app.post('/api/generate-speech', async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Missing text' });
     
-    const style = `You are a jolly old elf, like Santa Claus, read this: [chuckling] `;
+    const style = `SANTA CLAUS
+# AUDIO PROFILE: Nicholas C., "Santa"
+
+## The Scene:
+The north pole, inside a house next to a crackling fireplace, next to a christmas tree.
+
+### DIRECTORS NOTES
+Vocal Quality: When he speaks (or chuckles), it should resonate from the chest. It is a rumble, warm like a fireplace, not high-pitched or manic.
+Internal Motivation: You are not playing a mascot; you are playing a guardian.
+The Jolly Grandfather: Voice is a strong deep vibrato, rich, and resonant, shaking with constant mirth
+The "H" Factor: All laughter ("Ho, Ho, Ho") must be initiated with a heavy aspirate "H" breath to cushion the vocal cords.
+Pace: Deliberate and energetic with a endearing bravado
+
+### SAMPLE CONTEXT
+Nicholas is an energetic, and a bit out of breath after delivering all the toys to everyone after criss crossing the world bringing toys and joy down chimneys everywhere
+
+### TRANSCRIPT
+`;
     const promptText = style + text;
 
     console.log(`🎙️ Generating Gemini TTS Voice for: "${text.substring(0, 30)}..."`);
@@ -195,7 +212,7 @@ app.post('/api/generate-speech', async (req, res) => {
           responseModalities: ["AUDIO"],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: "Charon" }
+              prebuiltVoiceConfig: { voiceName: "Sadachbia" }
             }
           }
         }

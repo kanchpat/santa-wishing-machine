@@ -20,3 +20,5 @@ dist-ssr/
 *.zip
 
 .genkit/
+
+.commit.txt
