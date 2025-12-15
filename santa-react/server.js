@@ -34,8 +34,8 @@ app.post('/api/generate-video', async (req, res) => {
     console.log("🎥 Starting Veo generation with Gemini API...");
 
     // 1. Start generation (Long Running Operation)
-    // Switching to veo-2.0-generate-001 as it shows activity in user's console
-    const modelName = 'veo-2.0-generate-001';
+    // Switching to veo-3.1-fast-generate-preview as it shows activity in user's console
+    const modelName = 'veo-3.1-fast-generate-preview';
     console.log(`🎥 Launching ${modelName}...`);
 
     const initialResponse = await fetch(`${BASE_URL}/models/${modelName}:predictLongRunning?key=${API_KEY}`, {
@@ -171,43 +171,52 @@ app.get('/api/proxy-video', async (req, res) => {
   }
 });
 
-// --- Text-to-Speech Endpoint (Google Cloud Neural2) ---
+// --- Text-to-Speech Endpoint (Gemini 2.5 Flash Preview TTS) ---
 app.post('/api/generate-speech', async (req, res) => {
   try {
     const { text } = req.body;
     if (!text) return res.status(400).json({ error: 'Missing text' });
+    
+    const style = `You are a jolly old elf, like Santa Claus, read this: [chuckling] `;
+    const promptText = style + text;
 
-    console.log(`🎙️ Generating Neural Voice for: "${text.substring(0, 30)}..."`);
+    console.log(`🎙️ Generating Gemini TTS Voice for: "${text.substring(0, 30)}..."`);
+    console.log(`with style: "${style}"`);
 
-    // Using en-US-Neural2-D (Male, Deep) for Santa
-    const ttsUrl = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${API_KEY}`;
+    // Using Gemini 2.5 Flash Preview TTS with Charon voice
+    const genUrl = `${BASE_URL}/models/gemini-2.5-flash-preview-tts:generateContent?key=${API_KEY}`;
 
-    const response = await fetch(ttsUrl, {
+    const response = await fetch(genUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        input: { text },
-        // Switching to "Studio" voice which is much higher quality/natural
-        // en-US-Studio-M is a rich male voice. 
-        // We remove the pitch shift to avoid the "robot" artifacting.
-        voice: { languageCode: 'en-US', name: 'en-US-Studio-M' },
-        audioConfig: { audioEncoding: 'MP3', speakingRate: 1.0, pitch: 0 }
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: "Charon" }
+            }
+          }
+        }
       })
     });
 
     if (!response.ok) {
       const err = await response.text();
-      console.error("TTS API Error:", err);
-      // Fallback message if API is not enabled
-      if (err.includes('Cloud Text-to-Speech API has not been used')) {
-        return res.status(403).json({ error: 'API_NOT_ENABLED', detail: err });
-      }
-      throw new Error(`TTS Failed: ${response.statusText}`);
+      console.error("Gemini TTS API Error:", err);
+      throw new Error(`TTS Failed: ${response.statusText} - ${err}`);
     }
 
     const data = await response.json();
-    // API returns { audioContent: "base64string" }
-    res.json({ audioContent: data.audioContent });
+    const audioContent = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+
+    if (!audioContent) {
+      console.error("Unexpected Gemini response:", JSON.stringify(data, null, 2));
+      throw new Error("No audio content found in Gemini response");
+    }
+
+    res.json({ audioContent });
 
   } catch (error) {
     console.error("Speech Generation Error:", error);
@@ -227,7 +236,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // The "catch-all" handler: for any request that doesn't
 // match one above, send back React's index.html file.
-app.get('*', (req, res) => {
+app.get(/(.*)/, (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
