@@ -1,12 +1,12 @@
 # 🎅 Santa's Wishing Machine (Gemini + Veo Edition)
 
-A magical, AI-powered web experience where Santa moves, speaks, and creates personalized messages for children. Built with **React**, **Node.js**, **Google Gemini**, **Veo**, and **Google Cloud Neural TTS**.
+A magical, AI-powered web experience where Santa moves, speaks, and creates personalized messages for children. Built with **React**, **Node.js**, **Google Gemini**, **Veo**, and **Gemini TTS**.
 
 ## ✨ Features
 
 *   **Personalized Script Generation**: Uses **Gemini 2.0 Flash** to write unique, 60-second stories based on a child's name, age, location, and interests.
-*   **Cinematic Video Generation**: Uses **Google Veo (veo-2.0-generate-001)** to create a photorealistic background video of Santa in his workshop (Context-Aware: Santa holds a parchment with the child's name!).
-*   **Neural Text-to-Speech (Voice 2.0)**: Uses **Google Cloud Neural2/Studio** voices for a Hollywood-quality, warm Santa voice.
+*   **Cinematic Video Generation**: Uses **Google Veo (veo-3.1-fast-generate-preview)** to create a photorealistic background video of Santa in his workshop (Context-Aware: Santa holds a parchment with the child's name!).
+*   **Gemini Text-to-Speech**: Uses **Gemini 2.5 Flash Preview TTS** (Voice: Charon) for a natural, expressive Santa voice.
 *   **Smart Looping**: Video seamlessly loops while the longer audio story plays.
 *   **Dual-Stack Architecture**:
     *   **Frontend**: React + Vite + Tailwind CSS (Port 5173+)
@@ -18,8 +18,7 @@ A magical, AI-powered web experience where Santa moves, speaks, and creates pers
 
 ### 1. API Keys
 You need a **Google Cloud Project** with the following APIs enabled:
-*   **Generative Language API** (for Gemini/Veo)
-*   **Cloud Text-to-Speech API** (for Neural Voice) -> **[Enable Here](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com)**
+*   **Generative Language API** (for Gemini/Veo/TTS)
 
 Create a `.env` file in the `santa-react` directory:
 ```env
@@ -52,20 +51,19 @@ This will:
 **Access the App:** Open the URL shown in the terminal (usually `http://localhost:5173`).
 
 ### System Architecture Info-Graphic
-![Santa App Architecture](architecture.jpg)
+![Santa App Architecture](architecture.png)
 
 ---
 
 ## 🧙‍♂️ Troubleshooting
 
 ### "Santa lost his voice!" (API Error)
-If you click Play and get a 403 Error for TTS:
+If you click Play and get an error:
 1.  Check your **server terminal logs**.
-2.  If you see `API_KEY_SERVICE_BLOCKED`, you **must enable the Cloud Text-to-Speech API** in your Google Console.
-3.  [Click here to Enable API](https://console.cloud.google.com/apis/library/texttospeech.googleapis.com).
+2.  Ensure your **Gemini API Key** is valid and has access to the `gemini-2.5-flash-preview-tts` model.
 
 ### Video Generation Fails?
-*   Check if your project has access to `veo-2.0-generate-001` (Trusted Tester / Vertex AI access may be required).
+*   Check if your project has access to `veo-3.1-fast-generate-preview` (Trusted Tester / Vertex AI access may be required).
 *   The app falls back to "Mock Mode" if the API key is missing or invalid.
 
 ### "Port in Use"?
@@ -80,7 +78,7 @@ The `start.sh` script tries to use standard ports. If they are busy, Vite will a
 *   `server.js`: The Backend.
     *   `/api/generate-video`: Calls Veo API (Authenticated).
     *   `/api/proxy-video`: Streams the video file (CORS fix).
-    *   `/api/generate-speech`: Calls Google TTS API (Neural Voice).
+    *   `/api/generate-speech`: Calls Gemini TTS API.
 *   `node_env/`: Local Node.js environment (Self-contained).
 *   `start.sh`: Universal launch script.
 

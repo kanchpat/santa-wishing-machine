@@ -42,21 +42,65 @@ export default function PersonalizedMessage({ name, script, videoData, isGenerat
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (errorData.error === 'API_NOT_ENABLED') {
-          alert("Please enable 'Cloud Text-to-Speech API' in your Google Cloud Console for this project!");
-          return;
-        }
+        console.error("TTS Error:", errorData);
         throw new Error('TTS Failed');
       }
 
+      // Helper to Write String to DataView
+      const writeString = (view, offset, string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+
+      // Helper to add WAV header to raw PCM data
+      const withWavHeader = (samples) => {
+        const buffer = new ArrayBuffer(44 + samples.length);
+        const view = new DataView(buffer);
+        const sampleRate = 24000; // Gemini default
+        const numChannels = 1;
+
+        // RIFF chunk descriptor
+        writeString(view, 0, 'RIFF');
+        view.setUint32(4, 36 + samples.length, true);
+        writeString(view, 8, 'WAVE');
+
+        // fmt sub-chunk
+        writeString(view, 12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM format (1)
+        view.setUint16(22, numChannels, true);
+        view.setUint32(24, sampleRate, true);
+        view.setUint32(28, sampleRate * numChannels * 2, true); // byte rate
+        view.setUint16(32, numChannels * 2, true); // block align
+        view.setUint16(34, 16, true); // bits per sample
+
+        // data sub-chunk
+        writeString(view, 36, 'data');
+        view.setUint32(40, samples.length, true);
+
+        // Write samples
+        const sampleBytes = new Uint8Array(buffer, 44);
+        sampleBytes.set(samples);
+
+        return buffer;
+      };
+
       const data = await response.json();
+      console.log("Received audio content length:", data.audioContent?.length);
+
       // Create a blob URL from the base64 audio
       const binaryString = window.atob(data.audioContent);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      const blob = new Blob([bytes.buffer], { type: 'audio/mp3' });
+
+      // Add WAV header to the raw PCM bytes
+      const wavBuffer = withWavHeader(bytes);
+      
+      const blob = new Blob([wavBuffer], { type: 'audio/wav' });
+      console.log("Created audio blob size:", blob.size);
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
 

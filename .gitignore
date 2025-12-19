@@ -18,3 +18,7 @@ dist-ssr/
 # Large files
 *.tar.gz
 *.zip
+
+.genkit/
+
+.commit.txt
