@@ -1,0 +1,15 @@
+digraph G {
+    rankdir=LR;
+    node [fontname="Arial"];
+    edge [fontname="Arial", fontsize=10];
+
+    A [label="React Client", shape=rect];
+    B [label="Node.js Backend", shape=ellipse];
+    C [label="Compositor Service", shape=diamond];
+    D [label="Final MP4", shape=rect];
+
+    A -> B [label="1. Send Video URL + TTS Audio"];
+    B -> C [label="2. Download Assets"];
+    C -> D [label="3. Process with FFmpeg"];
+    D -> A [label="4. Return Download URL"];
+}

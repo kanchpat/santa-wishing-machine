@@ -16,6 +16,8 @@ WORKDIR /app
 COPY package*.json ./
 # Only install production dependencies
 RUN npm ci --only=production
+# Install FFmpeg for server-side media compositing
+RUN apk add --no-cache ffmpeg
 COPY . .
 # Copy built assets from builder stage
 COPY --from=builder /app/dist ./dist

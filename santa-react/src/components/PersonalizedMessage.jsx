@@ -4,7 +4,9 @@ import React, { useState } from 'react';
 export default function PersonalizedMessage({ name, script, videoData, isGeneratingVideo, onGenerateVideo, onReset }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [audioBase64, setAudioBase64] = useState(null);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const [isCompositing, setIsCompositing] = useState(false);
   const videoRef = React.useRef(null);
   const audioRef = React.useRef(null);
 
@@ -96,9 +98,29 @@ export default function PersonalizedMessage({ name, script, videoData, isGenerat
         bytes[i] = binaryString.charCodeAt(i);
       }
 
-      // Add WAV header to the raw PCM bytes
+      // Convert PCM to WAV for playback
       const wavBuffer = withWavHeader(bytes);
       
+      // Store raw WAV bytes (base64 encoded) for compositing
+      // We need to convert the WAV buffer back to base64 or just use the raw PCM data?
+      // The backend expects 'audioData' as base64. 
+      // Option 1: Send the original PCM base64 (data.audioContent) and let backend add WAV header.
+      // Option 2: Send the WAV file as base64.
+      // The current backend code (server.js) writes the base64 directly to a .wav file:
+      // await fs.promises.writeFile(audioPath, audioBuffer);
+      // If we send PCM bytes to a .wav file, ffmpeg might complain if it lacks a header.
+      // So we should send the WAV-headered buffer as base64.
+      
+      // Helper to buffer to base64
+      let binary = '';
+      const wavBytes = new Uint8Array(wavBuffer);
+      const len = wavBytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(wavBytes[i]);
+      }
+      const wavBase64 = window.btoa(binary);
+      setAudioBase64(wavBase64);
+
       const blob = new Blob([wavBuffer], { type: 'audio/wav' });
       console.log("Created audio blob size:", blob.size);
       const url = URL.createObjectURL(blob);
@@ -113,6 +135,43 @@ export default function PersonalizedMessage({ name, script, videoData, isGenerat
       alert("Santa lost his voice! (Check console for API errors)");
     } finally {
       setIsLoadingAudio(false);
+    }
+  };
+
+  const handleDownloadVideo = async () => {
+    if (!videoData?.videoUrl || !audioBase64) {
+      alert("Please play the message first to generate the audio!");
+      return;
+    }
+
+    setIsCompositing(true);
+    try {
+      const response = await fetch('/api/composite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoUrl: videoData.videoUrl,
+          audioData: audioBase64
+        })
+      });
+
+      if (!response.ok) throw new Error('Compositing failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Santa_Message_${name || 'Believer'}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to create video. Please try again.");
+    } finally {
+      setIsCompositing(false);
     }
   };
 
@@ -328,9 +387,22 @@ export default function PersonalizedMessage({ name, script, videoData, isGenerat
                 <span className="material-symbols-outlined text-primary-mail group-hover:scale-110 transition-transform">picture_as_pdf</span>
                 Download Letter
               </button>
-              <button className="group flex items-center justify-center gap-2 bg-primary-mail hover:bg-red-600 text-white px-8 h-12 rounded-full font-bold transition-all shadow-xl hover:shadow-primary-mail/50 hover:-translate-y-0.5 border-2 border-transparent">
-                <span className="material-symbols-outlined group-hover:animate-bounce">share</span>
-                Share Video
+              <button 
+                onClick={handleDownloadVideo}
+                disabled={isCompositing || !videoData || !audioBase64}
+                className="group flex items-center justify-center gap-2 bg-primary-mail hover:bg-red-600 text-white px-8 h-12 rounded-full font-bold transition-all shadow-xl hover:shadow-primary-mail/50 hover:-translate-y-0.5 border-2 border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCompositing ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin">autorenew</span>
+                    Compositing...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined group-hover:animate-bounce">download</span>
+                    Download Video
+                  </>
+                )}
               </button>
               <button onClick={onReset} className="group flex items-center justify-center gap-2 bg-black/40 backdrop-blur-md border-2 border-white/30 hover:border-white text-white px-6 h-12 rounded-full font-bold transition-all shadow-lg hover:shadow-xl">
                 <span className="material-symbols-outlined group-hover:rotate-180 transition-transform duration-500">autorenew</span>

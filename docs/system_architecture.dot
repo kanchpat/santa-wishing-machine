@@ -1,0 +1,60 @@
+digraph SystemArchitecture {
+    rankdir=TB;
+    node [fontname="Helvetica", shape=box, style=filled, fillcolor="white"];
+    edge [fontname="Helvetica", fontsize=10];
+    splines=ortho;
+
+    // User
+    User [shape=circle, label="User", style=filled, fillcolor="#e0e0e0"];
+
+    // Frontend Cluster
+    subgraph cluster_Frontend {
+        label = "Frontend (React / Vite)";
+        style = filled;
+        color = "#e1f5fe";
+        node [fillcolor="#b3e5fc"];
+
+        UI [label="WishingConsole.jsx\n(Main UI)"];
+        Services [label="API Services\n(veo.js, gemini.js)"];
+    }
+
+    // Backend Cluster
+    subgraph cluster_Backend {
+        label = "Backend (Node.js / Express)";
+        style = filled;
+        color = "#fff3e0";
+        node [fillcolor="#ffcc80"];
+
+        Server [label="server.js\n(Express App)"];
+        Endpoints [label="Endpoints\n/api/generate-video\n/api/generate-speech\n/api/proxy-video\n/api/composite"];
+        FFmpeg [label="Compositor Service\n(FFmpeg Wrapper)", fillcolor="#ffab91"];
+    }
+
+    // External Services Cluster
+    subgraph cluster_Google {
+        label = "Google Cloud / Gemini API";
+        style = filled;
+        color = "#f3e5f5";
+        node [fillcolor="#e1bee7"];
+
+        Veo [label="Veo (Video)\n(Long Running Op)"];
+        TTS [label="Gemini 2.5 (Audio)\n(Flash Preview)"];
+    }
+
+    // Connections
+    User -> UI [label="Interacts"];
+    UI -> Services [label="Triggers"];
+    Services -> Server [label="HTTP / JSON"];
+    Server -> Endpoints [label="Routes"];
+    
+    Endpoints -> Veo [label="POST predictLongRunning"];
+    Endpoints -> TTS [label="POST generateContent"];
+    
+    Endpoints -> FFmpeg [label="Spawns Process"];
+    
+    // Data flow back
+    Veo -> Server [label="Video URI"];
+    TTS -> Server [label="Audio Bytes"];
+    FFmpeg -> Server [label="Combined MP4"];
+    Server -> UI [label="Stream / Download URL"];
+}
