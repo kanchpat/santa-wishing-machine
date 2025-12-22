@@ -32,6 +32,12 @@ cd santa-react
 npm install
 ```
 
+### 3. System Requirements (FFmpeg)
+The new **Video Compositor** feature requires **FFmpeg** to be installed on the host system for local development.
+*   **macOS:** `brew install ffmpeg`
+*   **Linux:** `sudo apt install ffmpeg`
+*   **Docker:** The provided `Dockerfile` installs this automatically.
+
 ---
 
 ## 🚀 How to Run

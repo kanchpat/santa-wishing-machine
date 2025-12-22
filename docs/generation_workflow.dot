@@ -1,0 +1,57 @@
+digraph GenerationWorkflow {
+    rankdir=LR;
+    node [fontname="Helvetica", fontsize=10, shape=rect, style=filled, fillcolor="white"];
+    edge [fontname="Helvetica", fontsize=9];
+
+    start [shape=circle, label="Start", style=filled, fillcolor="#e0e0e0"];
+    
+    subgraph cluster_Parallel {
+        label="Parallel Generation";
+        style=dashed;
+        
+        // TTS Branch
+        req_tts [label="Req: Generate Speech", fillcolor="#b3e5fc"];
+        gen_tts [label="Gemini 2.5 Flash\nGenerates Audio", fillcolor="#e1bee7"];
+        res_tts [label="Return Audio Data", fillcolor="#b3e5fc"];
+
+        // Video Branch
+        req_video [label="Req: Generate Video", fillcolor="#ffcc80"];
+        lro_start [label="Start LRO\n(Veo Model)", fillcolor="#e1bee7"];
+        poll_loop [label="Poll Operation\n(Every 10s)", shape=diamond, fillcolor="#ffcc80"];
+        video_ready [label="Video URI Ready", fillcolor="#ffcc80"];
+        proxy_video [label="Proxy Video Stream\n(Fix CORS)", fillcolor="#ffcc80"];
+    }
+
+    // Compositing
+    subgraph cluster_Composite {
+        label="Compositing (New)";
+        style=filled;
+        color="#fbe9e7";
+        
+        req_comp [label="Req: Composite\n(Send Video URL + Audio)", fillcolor="#ffab91"];
+        download [label="Download Assets\nto /tmp", fillcolor="#ffab91"];
+        ffmpeg [label="FFmpeg Process\n1. Loop Video\n2. Mix/Duck Audio\n3. Trim to Length", fillcolor="#ffab91"];
+        cleanup [label="Cleanup Temp Files", fillcolor="#ffab91"];
+    }
+
+    end [shape=doublecircle, label="End", style=filled, fillcolor="#e0e0e0"];
+
+    // Edges
+    start -> req_tts;
+    start -> req_video;
+
+    // TTS Flow
+    req_tts -> gen_tts -> res_tts;
+
+    // Video Flow
+    req_video -> lro_start -> poll_loop;
+    poll_loop -> poll_loop [label="Not Done"];
+    poll_loop -> video_ready [label="Done"];
+    video_ready -> proxy_video;
+
+    // Merge Flow
+    res_tts -> req_comp;
+    proxy_video -> req_comp;
+
+    req_comp -> download -> ffmpeg -> cleanup -> end;
+}

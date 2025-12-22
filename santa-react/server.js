@@ -9,7 +9,7 @@ const app = express();
 const port = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // Mock Video URL as fallback
 const MOCK_VIDEO_URL = "https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
@@ -240,6 +240,114 @@ Nicholas is an energetic, and a bit out of breath after delivering all the toys 
     res.status(500).json({ error: error.message });
   }
 });
+
+// --- Compositor Endpoint ---
+import fs from 'fs';
+import { compositeMedia } from './backend_services/compositor.js';
+import { pipeline } from 'stream/promises';
+
+app.post('/api/composite', async (req, res) => {
+  const tempFiles = [];
+  try {
+    const { videoUrl, audioData } = req.body;
+    if (!videoUrl || !audioData) {
+      return res.status(400).json({ error: 'Missing videoUrl or audioData' });
+    }
+
+    console.log("🥣 Starting Compositing Job...");
+
+    // 1. Determine Video Source URL
+    let fetchUrl = videoUrl;
+    // If it's our proxy URL, extract the real URL
+    if (videoUrl.includes('/api/proxy-video') && videoUrl.includes('?url=')) {
+      const match = videoUrl.match(/url=([^&]+)/);
+      if (match) {
+        fetchUrl = decodeURIComponent(match[1]);
+        console.log("🔗 Extracted real video URL from proxy link");
+      }
+    }
+    
+    // Append API Key if it's a Google GenAI URL and doesn't have it
+    if (fetchUrl.includes('generativelanguage.googleapis.com') && !fetchUrl.includes('key=')) {
+      const separator = fetchUrl.includes('?') ? '&' : '?';
+      fetchUrl = `${fetchUrl}${separator}key=${API_KEY}`;
+    }
+
+    // 2. Setup Temp Paths
+    // Use unique IDs to allow concurrent requests
+    const requestId = Date.now() + Math.random().toString(36).slice(2);
+    const tempDir = '/tmp'; // Standard temp dir (works in Docker/Linux/Mac usually)
+    
+    // Ensure temp dir exists (mostly for local dev)
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const videoPath = path.join(tempDir, `video_${requestId}.mp4`);
+    const audioPath = path.join(tempDir, `audio_${requestId}.wav`);
+    const outputPath = path.join(tempDir, `output_${requestId}.mp4`);
+
+    tempFiles.push(videoPath, audioPath, outputPath);
+
+    // 3. Save Audio File
+    console.log("💾 Saving temp audio...");
+    const audioBuffer = Buffer.from(audioData, 'base64');
+    await fs.promises.writeFile(audioPath, audioBuffer);
+
+    // 4. Download Video File
+    console.log(`⬇️ Downloading video from ${fetchUrl.substring(0, 50)}...`);
+    const videoResponse = await fetch(fetchUrl);
+    if (!videoResponse.ok) {
+      throw new Error(`Failed to download video: ${videoResponse.statusText}`);
+    }
+    const fileStream = fs.createWriteStream(videoPath);
+    await pipeline(videoResponse.body, fileStream);
+
+    // 5. Run Compositor
+    console.log("⚙️ Running FFmpeg...");
+    await compositeMedia(videoPath, audioPath, outputPath);
+
+    // 6. Send Result (Streaming with Chunked Transfer to avoid Cloud Run buffering limits)
+    console.log("🚀 Sending composite video...");
+    
+    // Explicitly set headers for file download
+    res.setHeader('Content-Disposition', 'attachment; filename="santa_message.mp4"');
+    res.setHeader('Content-Type', 'video/mp4');
+    // NOTE: We intentionally DO NOT set Content-Length. 
+    // This forces Transfer-Encoding: chunked, bypassing GFE 32MB buffering limits.
+
+    const readStream = fs.createReadStream(outputPath);
+    
+    readStream.on('error', (err) => {
+      console.error("Stream error:", err);
+      if (!res.headersSent) res.status(500).end();
+      cleanupFiles(tempFiles);
+    });
+
+    readStream.on('close', () => {
+      cleanupFiles(tempFiles);
+    });
+
+    readStream.pipe(res);
+
+  } catch (error) {
+    console.error("Compositor Error:", error);
+    cleanupFiles(tempFiles);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const cleanupFiles = (paths) => {
+  paths.forEach(p => {
+    if (fs.existsSync(p)) {
+      try {
+        fs.unlinkSync(p);
+      } catch (e) {
+        console.warn(`Failed to delete temp file ${p}:`, e.message);
+      }
+    }
+  });
+};
 
 // --- Static File Serving (Production) ---
 import path from 'path';
